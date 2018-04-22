@@ -15,9 +15,9 @@ Type /help for list of commands
 ## Installation and usage
 
 1.  Clone the repository
-2.  `npm install`
+2.  `yarn install`
 3.  Add your Telegram token to config.ts
-4.  `npm start`
+4.  `yarn start`
 
 ## Developing
 
