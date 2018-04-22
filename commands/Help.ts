@@ -9,8 +9,8 @@ export default function(bot: TelegramBot): ICommand {
     regexp: /\/help[ ]?(.*)$/,
     name: 'help',
     help: 'Displays a list of all available commands.',
-    usage: '/help\n' + 
-           '/help <command>',
+    usage: `/help
+/help <command>`,
 
     handler: ({msg, matches}) => {
       const args = messageHelper.parseArgs(matches);
@@ -20,7 +20,7 @@ export default function(bot: TelegramBot): ICommand {
         message = '*The following commands are available:*\n';
 
         for (const command of getCommands(bot)) {
-          message += (`${command.usage}\n_${command.help}_\n\n`);
+          message += `${command.usage}\n_${command.help}_\n\n`;
         }
       }
 
@@ -28,7 +28,7 @@ export default function(bot: TelegramBot): ICommand {
         const command = getCommands(bot).find(cmd => cmd.name === args[0]);
 
         if (command) {
-          message += (`${command.usage}\n_${command.help}_`);
+          message += `${command.usage}\n_${command.help}_`;
         } else {
           message += 'Command not found.\nPlease refer to /help';
         }
