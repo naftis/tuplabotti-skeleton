@@ -12,7 +12,7 @@ export default function(bot: TelegramBot): ICommand {
     usage: `/help
 /help <command>`,
 
-    handler: ({msg, matches}) => {
+    handler: ({ msg, matches }) => {
       const args = messageHelper.parseArgs(matches);
       let message = '';
 
@@ -35,6 +35,6 @@ export default function(bot: TelegramBot): ICommand {
       }
 
       bot.sendMessage(msg.chat.id, message, config.messageOptions);
-    },
+    }
   };
 }

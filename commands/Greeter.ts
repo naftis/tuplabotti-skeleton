@@ -9,7 +9,8 @@ export default function(bot: TelegramBot): ICommand {
     help: 'Basic example command for demonstrating purposes',
     usage: '/greet',
 
-    handler: ({msg, matches}) => { // Not necessary to include all parameters
+    handler: ({ msg, matches }) => {
+      // Not necessary to include all parameters
       // You can use messageHelper to parse arguments:
 
       // import * as messageHelper from '../helpers/message';
@@ -18,8 +19,8 @@ export default function(bot: TelegramBot): ICommand {
       bot.sendMessage(
         msg.chat.id,
         `Wassup ${msg.chat.first_name}!`,
-        config.messageOptions, // You can pass messageOptions as a parameter
+        config.messageOptions // You can pass messageOptions as a parameter
       );
-    },
+    }
   };
 }
