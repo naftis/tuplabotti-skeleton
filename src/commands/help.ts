@@ -9,32 +9,42 @@ export default function(bot: TelegramBot): ICommand {
     regexp: /\/help[ ]?(.*)$/,
     name: 'help',
     help: 'Displays a list of all available commands.',
-    usage: `/help
-/help <command>`,
+    usage: `/help\n` + `/help <command>`,
 
     handler: ({ msg, matches }) => {
       const args = messageHelper.parseArgs(matches);
-      let message = '';
+      const helpText = handleArguments(bot, args);
 
-      if (args.length === 0) {
-        message = '*The following commands are available:*\n';
-
-        for (const command of getCommands(bot)) {
-          message += `${command.usage}\n_${command.help}_\n\n`;
-        }
+      if (helpText) {
+        bot.sendMessage(msg.chat.id, helpText, config.messageOptions);
       }
-
-      if (args.length === 1) {
-        const command = getCommands(bot).find(cmd => cmd.name === args[0]);
-
-        if (command) {
-          message += `${command.usage}\n_${command.help}_`;
-        } else {
-          message += 'Command not found.\nPlease refer to /help';
-        }
-      }
-
-      bot.sendMessage(msg.chat.id, message, config.messageOptions);
     }
   };
+}
+
+function handleArguments(
+  bot: TelegramBot,
+  args: ReadonlyArray<string>
+): string | void {
+  if (args.length === 0) {
+    const availableCommands = getCommands(bot)
+      .map(command => {
+        return `${command.usage}\n_${command.help}_`;
+      })
+      .join('\n\n');
+
+    return `*The following commands are available:*\n${availableCommands}`;
+  }
+
+  if (args.length === 1) {
+    const command = getCommands(bot).find(cmd => cmd.name === args[0]);
+
+    if (command) {
+      return `${command.usage}\n_${command.help}_`;
+    } else {
+      return `Command not found.\nPlease refer to /help`;
+    }
+  }
+
+  return;
 }
