@@ -16,17 +16,17 @@ Type /help for list of commands
 
 1.  Clone the repository
 2.  `yarn install`
-3.  Add your Telegram token to config.ts
+3.  Add your Telegram token to `./src/config.ts`
 4.  `yarn start`
 
 ## Developing
 
 ### Adding commands
 
-Commands are supposed to be added to `./commands/` as _.ts_ files. You can use `Greeter.ts` as an example of a ICommand function.
+Commands are supposed to be added to `./src/commands/` as _.ts_ files. You can use `Greeter.ts` as an example of a ICommand function.
 
-When you have finished creating your command, you can add it to `./command.ts` to `getCommand()` function, which returns a list that Tuplabotti iterates through when starting to listen for messages.
+When you have finished creating your command, you can add it to `./src/command.ts` to `getCommand()` function, which returns a list that Tuplabotti iterates through when starting to listen for messages.
 
 ### Adding startup tasks
 
-Append the list in `./command.ts`'s `getStartupTasks()` with your function which returns a `Promise`.
+Append the list in `./src/command.ts`'s `getStartupTasks()` with your function which returns a `Promise`.
