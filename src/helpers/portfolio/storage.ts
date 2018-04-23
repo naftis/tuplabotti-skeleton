@@ -21,14 +21,20 @@ export function createStorage(): void {
 export function getUsers(id: number = 0): ReadonlyArray<User> {
   const usersAsBuffer = fs.readFileSync(USERS_STORAGE_PATH);
   const usersAsString = usersAsBuffer.toString();
-  const users: ReadonlyArray<User> = JSON.parse(usersAsString);
 
-  if (id === 0) {
+  try {
+    const users: ReadonlyArray<User> = JSON.parse(usersAsString);
+
+    if (id === 0) {
+      return users;
+    }
+
+    const userWithId = users.filter(user => user.id === id);
+    return userWithId;
+  } catch {
+    const users: ReadonlyArray<User> = [];
     return users;
   }
-
-  const userWithId = users.filter(user => user.id === id);
-  return userWithId;
 }
 
 export function addUser(id: number, firstName: string): User {

@@ -10,21 +10,20 @@ export default function(bot: TelegramBot): ICommand {
     regexp: /^(.+)$/,
     name: 'portfolio',
     help: 'Kryptoportfolio',
-    usage: '/greet',
+    usage: '/portfolio',
 
     handler: async ({ msg, matches }) => {
       const args = messageHelper.parseArgs(matches);
 
-      if (args[0] === '/portfolio') {
-        return printPortfolio(bot, msg);
+      if (args[0] === '/portfolio' && msg.chat.type === 'private') {
+        return printUserPortfolio(bot, msg);
       }
 
-      if (msg.chat.type !== 'private') {
-        return;
-      }
-
-      if (args[0] === '/portfolio') {
-        return printMyPortfolio(bot, msg);
+      if (
+        args[0] === '/portfolio' &&
+        ['group', 'supergroup'].includes(msg.chat.type)
+      ) {
+        return printGroupPortfolio(bot, msg);
       }
 
       return allCommands(bot, msg, args);
@@ -71,7 +70,6 @@ async function defaultCommand(
     );
 
     await bot.sendMessage(msg.from.id, `btc`, config.messageOptions);
-
     await bot.sendMessage(msg.from.id, `eth`, config.messageOptions);
 
     storage.addUser(msg.from.id, msg.from.first_name);
@@ -84,9 +82,8 @@ async function askCrypto(bot, msg, crypto: string): Promise<void> {
   if (!/^[a-zA-Z0-9]+$/.test(formattedCrypto)) {
     bot.sendMessage(
       msg.from.id,
-      `***Virhe:*** Kryptovaluutan nimessä saa olla vain a-z A-Z ja 0-9.
-      
-Kerro lisää kryptoja tai muokkaa niitä!`,
+      `***Virhe:*** Kryptovaluutan nimessä saa olla vain a-z A-Z ja 0-9.\n` +
+        `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
     return;
@@ -100,10 +97,9 @@ Kerro lisää kryptoja tai muokkaa niitä!`,
   if (!data.EUR) {
     bot.sendMessage(
       msg.from.id,
-      `***Virhe:*** En löytänyt etsimääsi kryptovaluuttaa.
-Tarkista että käytit oikeaa lyhennettä.
-
-Kerro lisää kryptoja tai muokkaa niitä!`,
+      `***Virhe:*** En löytänyt etsimääsi kryptovaluuttaa.\n` +
+        `Tarkista että käytit oikeaa lyhennettä.\n\n` +
+        `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
     return;
@@ -113,8 +109,8 @@ Kerro lisää kryptoja tai muokkaa niitä!`,
 
   await bot.sendMessage(
     msg.from.id,
-    `Paljonko omistat kryptoa ***${formattedCrypto}***? Esim. \`0.018\`.
-Antamalla arvon \`0\` se poistuu.`,
+    `Paljonko omistat kryptoa ***${formattedCrypto}***? Esim. \`0.018\`.\n` +
+      `Antamalla arvon \`0\` se poistuu.`,
     config.messageOptions
   );
 }
@@ -125,13 +121,12 @@ async function askValue(bot, msg, value: string): Promise<void> {
   if (value === '0') {
     bot.sendMessage(
       msg.from.id,
-      `Poistin portfoliostasi krypton ***${user.askedCrypto}***.
-Kerro lisää kryptoja tai muokkaa niitä!`,
+      `Poistin portfoliostasi krypton ***${user.askedCrypto}***.\n` +
+        `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
 
     storage.removeAskedCrypto(msg.from.id);
-
     return;
   }
 
@@ -140,9 +135,8 @@ Kerro lisää kryptoja tai muokkaa niitä!`,
   if (floatValue <= 0 || isNaN(floatValue) || floatValue > 1000000) {
     bot.sendMessage(
       msg.from.id,
-      `***Virhe:*** En ymmärtänyt tarjoamaasi lukua. Kerro paljonko omistat kryptoa \`${
-        user.askedCrypto
-      }\`.`,
+      `***Virhe:*** En ymmärtänyt tarjoamaasi lukua.\n` +
+        `Kerro paljonko omistat kryptoa \`${user.askedCrypto}\`.`,
       config.messageOptions
     );
 
@@ -153,8 +147,9 @@ Kerro lisää kryptoja tai muokkaa niitä!`,
 
   bot.sendMessage(
     msg.from.id,
-    `Lisäsin portfolioosi ***${floatValue} ${user.askedCrypto}***.
-Voit muokata tätä kertomalla sen minulle uudestaan. Voit poistaa sen antamalla arvoksi \`0\`.`,
+    `Lisäsin portfolioosi ***${floatValue} ${user.askedCrypto}***.\n` +
+      `Voit muokata tätä kertomalla sen minulle uudestaan.\n` +
+      `Voit poistaa sen antamalla arvoksi \`0\`.`,
     config.messageOptions
   );
 }
@@ -165,12 +160,12 @@ function getYesterdaysTimestamp(): number {
   return Math.floor(date.valueOf() / 1000);
 }
 
-function getTodaysTimestamp(): number {
+function getCurrentTimestamp(): number {
   const date = new Date();
   return Math.floor(date.valueOf() / 1000);
 }
 
-async function printPortfolio(bot, msg): Promise<void> {
+async function printGroupPortfolio(bot, msg): Promise<void> {
   const users = storage.getUsers();
   const cryptos = users.map(user =>
     user.cryptos.map(crypto => crypto.abbreviation)
@@ -179,58 +174,57 @@ async function printPortfolio(bot, msg): Promise<void> {
   const allCryptos = [].concat(...cryptos);
   const joinedCryptos = allCryptos.join(',');
 
-  const yesterdayDate = getYesterdaysTimestamp();
-  const apiUrl =
+  const pastTimestamp = getYesterdaysTimestamp();
+  const apiUrlPast =
     `https://min-api.cryptocompare.com/data/pricehistorical` +
-    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${yesterdayDate}`;
-  const getPrice = await axios.get(apiUrl);
-  const { data } = getPrice;
+    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${pastTimestamp}`;
 
-  if (!data.EUR) {
-    console.log('Data not found');
+  const getPastPrice = await axios.get(apiUrlPast);
+  const pastData = getPastPrice.data;
+
+  if (!pastData.EUR) {
+    console.log('Yesterdays data not found');
     return;
   }
 
-  const todayDate = getTodaysTimestamp();
-
-  const apiUrlToday =
+  const currentTimestamp = getCurrentTimestamp();
+  const apiUrlCurrent =
     `https://min-api.cryptocompare.com/data/pricehistorical` +
-    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${todayDate}`;
+    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${currentTimestamp}`;
 
-  const getTodayPrice = await axios.get(apiUrlToday);
-  const todayData = getTodayPrice.data;
+  const getCurrentPrice = await axios.get(apiUrlCurrent);
+  const currentData = getCurrentPrice.data;
 
-  if (!todayData.EUR) {
-    console.log('Todays data nto found');
+  if (!currentData.EUR) {
+    console.log('Todays data not found');
     return;
   }
 
   const portfolioMessages = users.map(user => {
     const totals = user.cryptos.reduce(
       (acc, crypto) => {
-        const yesterdaysCrypto = data.EUR[crypto.abbreviation];
-        const todaysCrypto = todayData.EUR[crypto.abbreviation];
+        const pastCrypto = pastData.EUR[crypto.abbreviation];
+        const currentCrypto = currentData.EUR[crypto.abbreviation];
 
-        if (yesterdaysCrypto === 0 || todaysCrypto === 0) {
+        if (pastCrypto === 0 || currentCrypto === 0) {
           return acc;
         }
 
-        const yesterdaysCryptoToEur =
-          crypto.amount / parseFloat(yesterdaysCrypto);
-        const todaysCryptoToEur = crypto.amount / parseFloat(todaysCrypto);
+        const pastCryptoToEur = crypto.amount / parseFloat(pastCrypto);
+        const currentCryptoToEur = crypto.amount / parseFloat(currentCrypto);
 
-        const yesterdaysTotal = acc.yesterdaysTotal + yesterdaysCryptoToEur;
-        const todaysTotal = acc.todaysTotal + todaysCryptoToEur;
+        const pastTotal = acc.pastTotal + pastCryptoToEur;
+        const currentTotal = acc.currentTotal + currentCryptoToEur;
 
-        return { yesterdaysTotal, todaysTotal };
+        return { pastTotal, currentTotal };
       },
       {
-        yesterdaysTotal: 0,
-        todaysTotal: 0
+        pastTotal: 0,
+        currentTotal: 0
       }
     );
 
-    const percentChange = totals.todaysTotal / totals.yesterdaysTotal - 1;
+    const percentChange = totals.currentTotal / totals.pastTotal - 1;
     const fixedPercentChange = percentChange.toFixed(5);
     const percentChangeAsFloat = parseFloat(fixedPercentChange) * 100;
 
@@ -247,7 +241,7 @@ async function printPortfolio(bot, msg): Promise<void> {
   bot.sendMessage(msg.chat.id, portfolioMessage, config.messageOptions);
 }
 
-function printMyPortfolio(bot: TelegramBot, msg: TelegramBot.Message): void {
+function printUserPortfolio(bot: TelegramBot, msg: TelegramBot.Message): void {
   const users = storage.getUsers();
   const currentUser = users.find(user => user.id === msg.from.id);
 
