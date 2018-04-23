@@ -15,9 +15,7 @@ export default function(bot: TelegramBot): ICommand {
       const args = messageHelper.parseArgs(matches);
       const helpText = handleArguments(bot, args);
 
-      if (helpText) {
-        bot.sendMessage(msg.chat.id, helpText, config.messageOptions);
-      }
+      bot.sendMessage(msg.chat.id, helpText, config.messageOptions);
     }
   };
 }
@@ -25,26 +23,22 @@ export default function(bot: TelegramBot): ICommand {
 function handleArguments(
   bot: TelegramBot,
   args: ReadonlyArray<string>
-): string | void {
+): string {
+  const allCommands = getCommands(bot);
+
   if (args.length === 0) {
-    const availableCommands = getCommands(bot)
-      .map(command => {
-        return `${command.usage}\n_${command.help}_`;
-      })
+    const availableCommands = allCommands
+      .map(command => `${command.usage}\n_${command.help}_`)
       .join('\n\n');
 
     return `*The following commands are available:*\n${availableCommands}`;
   }
 
-  if (args.length === 1) {
-    const command = getCommands(bot).find(cmd => cmd.name === args[0]);
+  const foundCommand = allCommands.find(cmd => cmd.name === args[0]);
 
-    if (command) {
-      return `${command.usage}\n_${command.help}_`;
-    } else {
-      return `Command not found.\nPlease refer to /help`;
-    }
+  if (foundCommand) {
+    return `${foundCommand.usage}\n_${foundCommand.help}_`;
   }
 
-  return;
+  return `Command not found.\nPlease refer to /help`;
 }
