@@ -1,17 +1,17 @@
 import * as TelegramBot from 'node-telegram-bot-api';
-import Greeter from './commands/Greeter';
-import Help from './commands/Help';
-import Portfolio from './commands/Portfolio';
+import greeter from './commands/greeter';
+import help from './commands/help';
+import portfolio from './commands/portfolio';
 import { ICommand } from './helpers/interface';
 
 // Commands
-export function getCommands(bot: TelegramBot): ICommand[] {
-  return [Greeter(bot), Help(bot), Portfolio(bot)];
+export function getCommands(bot: TelegramBot): ReadonlyArray<ICommand> {
+  return [greeter(bot), help(bot), portfolio(bot)];
 }
 
 // Promises executed while starting the bot
 export function getStartupTasks(
   bot: TelegramBot
-): Array<number | NodeJS.Timer> {
+): ReadonlyArray<number | NodeJS.Timer> {
   return [];
 }

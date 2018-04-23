@@ -22,7 +22,7 @@ export default function(bot: TelegramBot): ICommand {
       if (msg.chat.type !== 'private') {
         return;
       }
-
+      
       if (args[0] === '/portfolio') {
         return printMyPortfolio(bot, msg);
       }
@@ -230,21 +230,22 @@ async function printPortfolio(bot, msg): Promise<void> {
       }
     );
 
-    const percentChange = totals.todaysTotal / totals.yesterdaysTotal - 1;
+    const percentChange = (totals.todaysTotal / totals.yesterdaysTotal) - 1;
     const fixedPercentChange = percentChange.toFixed(5);
     const percentChangeAsFloat = parseFloat(fixedPercentChange) * 100;
 
-    const prefixedChange =
-      percentChangeAsFloat > 0
-        ? '+' + percentChangeAsFloat
-        : percentChangeAsFloat;
+    const prefixedChange = percentChangeAsFloat > 0 ? '+' + percentChangeAsFloat : percentChangeAsFloat;
 
     return `***${user.firstName}***: ${prefixedChange}%`;
   });
 
   const portfolioMessage = portfolioMessages.join('\n');
 
-  bot.sendMessage(msg.chat.id, portfolioMessage, config.messageOptions);
+  bot.sendMessage(
+    msg.chat.id,
+    portfolioMessage,
+    config.messageOptions
+  );
 }
 
 function printMyPortfolio(bot: TelegramBot, msg: TelegramBot.Message): void {
@@ -252,12 +253,14 @@ function printMyPortfolio(bot: TelegramBot, msg: TelegramBot.Message): void {
   const currentUser = users.find(user => user.id === msg.from.id);
 
   if (currentUser) {
-    const message = currentUser.cryptos
-      .map(crypto => {
-        return `***${crypto.abbreviation}:*** ${crypto.amount}`;
-      })
-      .join('\n');
+    const message = currentUser.cryptos.map(crypto => {
+      return `***${crypto.abbreviation}:*** ${crypto.amount}`;
+    }).join('\n');
 
-    bot.sendMessage(msg.from.id, message, config.messageOptions);
+    bot.sendMessage(
+      msg.from.id,
+      message,
+      config.messageOptions
+    );
   }
 }

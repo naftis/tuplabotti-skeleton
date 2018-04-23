@@ -4,6 +4,7 @@
   "description": "",
   "main": "main.ts",
   "dependencies": {
+    "axios": "^0.18.0",
     "dotenv": "^5.0.1",
     "node-telegram-bot-api": "^0.30.0",
     "request": "^2.83.0",
@@ -28,7 +29,8 @@
     "pretty-quick": "^1.4.1",
     "ts-jest": "^22.0.4",
     "tslint": "^5.8.0",
-    "tslint-config-prettier": "^1.6.0"
+    "tslint-config-prettier": "^1.6.0",
+    "tslint-immutable": "^4.5.4"
   },
   "jest": {
     "transform": {
