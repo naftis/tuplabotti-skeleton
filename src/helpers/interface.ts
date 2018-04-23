@@ -6,5 +6,5 @@ export interface ICommand {
   help: string;
   usage: string;
 
-  handler: (data: {msg: Message, matches: RegExpExecArray | null}) => void;
+  handler: (data: { msg: Message; matches: RegExpExecArray | null }) => void;
 }

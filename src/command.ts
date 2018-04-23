@@ -1,11 +1,12 @@
 import * as TelegramBot from 'node-telegram-bot-api';
 import Greeter from './commands/Greeter';
 import Help from './commands/Help';
+import Portfolio from './commands/Portfolio';
 import { ICommand } from './helpers/interface';
 
 // Commands
 export function getCommands(bot: TelegramBot): ICommand[] {
-  return [Greeter(bot), Help(bot)];
+  return [Greeter(bot), Help(bot), Portfolio(bot)];
 }
 
 // Promises executed while starting the bot

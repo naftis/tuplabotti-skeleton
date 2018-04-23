@@ -12,4 +12,3 @@ export function parseArgs(matches: RegExpExecArray | null): string[] {
 export function errorHandling(error: string): void {
   console.log(config.consoleStyle, error);
 }
-  
