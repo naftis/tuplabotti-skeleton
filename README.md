@@ -23,7 +23,7 @@ Type /help for list of commands
 
 ### Adding commands
 
-Commands are supposed to be added to `./src/commands/` as _.ts_ files. You can use `Greeter.ts` as an example of a ICommand function.
+Commands are supposed to be added to `./src/commands/` as _.ts_ files. You can use `./src/commands/Greeter.ts` as an example of a ICommand function.
 
 When you have finished creating your command, you can add it to `./src/command.ts` to `getCommand()` function, which returns a list that Tuplabotti iterates through when starting to listen for messages.
 
