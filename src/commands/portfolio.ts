@@ -7,7 +7,7 @@ import * as storage from '../helpers/portfolio/storage';
 
 export default function(bot: TelegramBot): ICommand {
   return {
-    regexp: /^(.+)$/,
+    regexp: /^([a-zA-Z0-9\.]+|\/portfolio)$/,
     name: 'portfolio',
     help: 'Kryptoportfolio',
     usage: '/portfolio',
