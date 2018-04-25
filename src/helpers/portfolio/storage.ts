@@ -2,7 +2,7 @@ import * as fs from 'fs';
 
 const USERS_STORAGE_PATH = './src/data/portfolio/users.json';
 
-interface Crypto {
+export interface Crypto {
   readonly abbreviation: string;
   readonly amount: number;
 }

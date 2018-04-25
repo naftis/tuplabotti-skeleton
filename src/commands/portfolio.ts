@@ -15,18 +15,18 @@ export default function(bot: TelegramBot): ICommand {
     handler: async ({ msg, matches }) => {
       const args = messageHelper.parseArgs(matches);
 
-      if (args[0] === '/portfolio' && msg.chat.type === 'private') {
-        return printUserPortfolio(bot, msg);
+      const isPortfolioMsg = args[0] === '/portfolio';
+      const isPrivateChat = msg.chat.type === 'private';
+
+      if (!isPortfolioMsg) {
+        return allCommands(bot, msg, args);
       }
 
-      if (
-        args[0] === '/portfolio' &&
-        ['group', 'supergroup'].includes(msg.chat.type)
-      ) {
-        return printGroupPortfolio(bot, msg);
+      if (isPrivateChat) {
+        printUserPortfolio(bot, msg);
       }
 
-      return allCommands(bot, msg, args);
+      return printGroupPortfolio(bot, msg);
     }
   };
 }
@@ -35,58 +35,56 @@ function allCommands(
   bot: TelegramBot,
   msg: TelegramBot.Message,
   args: ReadonlyArray<string>
-): void {
+): Promise<TelegramBot.Message | Error> {
   const user = storage.getUsers(msg.from.id)[0];
 
   if (!user) {
-    defaultCommand(bot, msg);
-    return;
+    return askCryptoAbbreviations(bot, msg);
   }
 
   if (user.askedCrypto) {
-    askValue(bot, msg, args[0]);
+    return modifyValueInStorage(bot, msg, args[0]);
   } else {
-    askCrypto(bot, msg, args[0]);
+    return askCryptoValues(bot, msg, args[0]);
   }
 }
 
-async function defaultCommand(
+async function askCryptoAbbreviations(
   bot: TelegramBot,
   msg: TelegramBot.Message
-): Promise<void> {
-  const user = storage.getUsers(msg.from.id)[0];
+): Promise<TelegramBot.Message | Error> {
+  await bot.sendMessage(
+    msg.from.id,
+    `Moro moro ${msg.chat.first_name}! Tehdään kryptoportfolio 🤑`,
+    config.messageOptions
+  );
 
-  if (!user) {
-    await bot.sendMessage(
-      msg.from.id,
-      `Moro moro ${msg.chat.first_name}! Tehdään kryptoportfolio 🤑`,
-      config.messageOptions
-    );
+  await bot.sendMessage(
+    msg.from.id,
+    `Kerro mitä kryptoja omistat, kyselen sitten paljonko. Esim.`,
+    config.messageOptions
+  );
 
-    await bot.sendMessage(
-      msg.from.id,
-      `Kerro mitä kryptoja omistat, kyselen sitten paljonko. Esim.`,
-      config.messageOptions
-    );
+  storage.addUser(msg.from.id, msg.from.first_name);
 
-    await bot.sendMessage(msg.from.id, `btc`, config.messageOptions);
-    await bot.sendMessage(msg.from.id, `eth`, config.messageOptions);
-
-    storage.addUser(msg.from.id, msg.from.first_name);
-  }
+  await bot.sendMessage(msg.from.id, `btc`, config.messageOptions);
+  return bot.sendMessage(msg.from.id, `eth`, config.messageOptions);
 }
 
-async function askCrypto(bot, msg, crypto: string): Promise<void> {
+async function askCryptoValues(
+  bot,
+  msg,
+  crypto: string
+): Promise<TelegramBot.Message | Error> {
   const formattedCrypto = crypto.toUpperCase();
 
   if (!/^[a-zA-Z0-9]+$/.test(formattedCrypto)) {
-    bot.sendMessage(
+    return bot.sendMessage(
       msg.from.id,
       `***Virhe:*** Kryptovaluutan nimessä saa olla vain a-z A-Z ja 0-9.\n` +
         `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
-    return;
   }
 
   const getCrypto = await axios.get(
@@ -95,19 +93,18 @@ async function askCrypto(bot, msg, crypto: string): Promise<void> {
   const { data } = getCrypto;
 
   if (!data.EUR) {
-    bot.sendMessage(
+    return bot.sendMessage(
       msg.from.id,
       `***Virhe:*** En löytänyt etsimääsi kryptovaluuttaa.\n` +
         `Tarkista että käytit oikeaa lyhennettä.\n\n` +
         `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
-    return;
   }
 
   storage.askCrypto(msg.from.id, formattedCrypto);
 
-  await bot.sendMessage(
+  return bot.sendMessage(
     msg.from.id,
     `Paljonko omistat kryptoa ***${formattedCrypto}***? Esim. \`0.018\`.\n` +
       `Antamalla arvon \`0\` se poistuu.`,
@@ -115,37 +112,38 @@ async function askCrypto(bot, msg, crypto: string): Promise<void> {
   );
 }
 
-async function askValue(bot, msg, value: string): Promise<void> {
+async function modifyValueInStorage(
+  bot,
+  msg,
+  value: string
+): Promise<TelegramBot.Message | Error> {
   const user = storage.getUsers(msg.from.id)[0];
 
   if (value === '0') {
-    bot.sendMessage(
+    storage.removeAskedCrypto(msg.from.id);
+
+    return bot.sendMessage(
       msg.from.id,
       `Poistin portfoliostasi krypton ***${user.askedCrypto}***.\n` +
         `Kerro lisää kryptoja tai muokkaa niitä!`,
       config.messageOptions
     );
-
-    storage.removeAskedCrypto(msg.from.id);
-    return;
   }
 
   const floatValue = parseFloat(value);
 
   if (floatValue <= 0 || isNaN(floatValue) || floatValue > 1000000) {
-    bot.sendMessage(
+    return bot.sendMessage(
       msg.from.id,
       `***Virhe:*** En ymmärtänyt tarjoamaasi lukua.\n` +
         `Kerro paljonko omistat kryptoa \`${user.askedCrypto}\`.`,
       config.messageOptions
     );
-
-    return;
   }
 
   storage.addCrypto(msg.from.id, floatValue);
 
-  bot.sendMessage(
+  return bot.sendMessage(
     msg.from.id,
     `Lisäsin portfolioosi ***${floatValue} ${user.askedCrypto}***.\n` +
       `Voit muokata tätä kertomalla sen minulle uudestaan.\n` +
@@ -165,19 +163,27 @@ function getCurrentTimestamp(): number {
   return Math.floor(date.valueOf() / 1000);
 }
 
-async function printGroupPortfolio(bot, msg): Promise<void> {
+async function printGroupPortfolio(
+  bot,
+  msg
+): Promise<TelegramBot.Message | Error> {
   const users = storage.getUsers();
   const cryptos = users.map(user =>
     user.cryptos.map(crypto => crypto.abbreviation)
   );
 
-  const allCryptos = [].concat(...cryptos);
-  const joinedCryptos = allCryptos.join(',');
+  const allUsersCryptoAbbrs = [].concat(...cryptos);
+  const joinedCryptoAbbrs = allUsersCryptoAbbrs.join(',');
 
   const pastTimestamp = getYesterdaysTimestamp();
+  const currentTimestamp = getCurrentTimestamp();
+
   const apiUrlPast =
     `https://min-api.cryptocompare.com/data/pricehistorical` +
-    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${pastTimestamp}`;
+    `?fsym=EUR&tsyms=${joinedCryptoAbbrs}&ts=${pastTimestamp}`;
+  const apiUrlCurrent =
+    `https://min-api.cryptocompare.com/data/pricehistorical` +
+    `?fsym=EUR&tsyms=${joinedCryptoAbbrs}&ts=${currentTimestamp}`;
 
   const getPastPrice = await axios.get(apiUrlPast);
   const pastData = getPastPrice.data;
@@ -186,11 +192,6 @@ async function printGroupPortfolio(bot, msg): Promise<void> {
     console.log('Yesterdays data not found');
     return;
   }
-
-  const currentTimestamp = getCurrentTimestamp();
-  const apiUrlCurrent =
-    `https://min-api.cryptocompare.com/data/pricehistorical` +
-    `?fsym=EUR&tsyms=${joinedCryptos}&ts=${currentTimestamp}`;
 
   const getCurrentPrice = await axios.get(apiUrlCurrent);
   const currentData = getCurrentPrice.data;
@@ -201,30 +202,13 @@ async function printGroupPortfolio(bot, msg): Promise<void> {
   }
 
   const portfolioMessages = users.map(user => {
-    const totals = user.cryptos.reduce(
-      (acc, crypto) => {
-        const pastCrypto = pastData.EUR[crypto.abbreviation];
-        const currentCrypto = currentData.EUR[crypto.abbreviation];
-
-        if (pastCrypto === 0 || currentCrypto === 0) {
-          return acc;
-        }
-
-        const pastCryptoToEur = crypto.amount / parseFloat(pastCrypto);
-        const currentCryptoToEur = crypto.amount / parseFloat(currentCrypto);
-
-        const pastTotal = acc.pastTotal + pastCryptoToEur;
-        const currentTotal = acc.currentTotal + currentCryptoToEur;
-
-        return { pastTotal, currentTotal };
-      },
-      {
-        pastTotal: 0,
-        currentTotal: 0
-      }
+    const { currentTotal, pastTotal } = getPastAndCurrentTotalInEur(
+      user.cryptos,
+      pastData,
+      currentData
     );
 
-    const percentChange = totals.currentTotal / totals.pastTotal - 1;
+    const percentChange = currentTotal / pastTotal - 1;
     const fixedPercentChange = percentChange.toFixed(5);
     const percentChangeAsFloat = parseFloat(fixedPercentChange) * 100;
 
@@ -238,20 +222,63 @@ async function printGroupPortfolio(bot, msg): Promise<void> {
 
   const portfolioMessage = portfolioMessages.join('\n');
 
-  bot.sendMessage(msg.chat.id, portfolioMessage, config.messageOptions);
+  return bot.sendMessage(msg.chat.id, portfolioMessage, config.messageOptions);
 }
 
-function printUserPortfolio(bot: TelegramBot, msg: TelegramBot.Message): void {
+interface ApiResponse {
+  readonly EUR: object;
+}
+
+interface PastAndCurrentTotal {
+  readonly pastTotal: number;
+  readonly currentTotal: number;
+}
+
+function getPastAndCurrentTotalInEur(
+  cryptos: ReadonlyArray<storage.Crypto>,
+  pastEurToCrypto: ApiResponse,
+  currentEurToCrypto: ApiResponse
+): PastAndCurrentTotal {
+  return cryptos.reduce(
+    (acc, crypto) => {
+      const pastCrypto = pastEurToCrypto.EUR[crypto.abbreviation];
+      const currentCrypto = currentEurToCrypto.EUR[crypto.abbreviation];
+
+      if (pastCrypto === 0 || currentCrypto === 0) {
+        return acc;
+      }
+
+      const pastCryptoToEur = crypto.amount / parseFloat(pastCrypto);
+      const currentCryptoToEur = crypto.amount / parseFloat(currentCrypto);
+
+      const pastTotal = acc.pastTotal + pastCryptoToEur;
+      const currentTotal = acc.currentTotal + currentCryptoToEur;
+
+      return { pastTotal, currentTotal };
+    },
+    {
+      pastTotal: 0,
+      currentTotal: 0
+    }
+  );
+}
+
+function printUserPortfolio(
+  bot: TelegramBot,
+  msg: TelegramBot.Message
+): Promise<TelegramBot.Message | Error> {
   const users = storage.getUsers();
   const currentUser = users.find(user => user.id === msg.from.id);
 
-  if (currentUser) {
-    const message = currentUser.cryptos
-      .map(crypto => {
-        return `***${crypto.abbreviation}:*** ${crypto.amount}`;
-      })
-      .join('\n');
-
-    bot.sendMessage(msg.from.id, message, config.messageOptions);
+  if (!currentUser) {
+    return;
   }
+
+  const message = currentUser.cryptos
+    .map(crypto => {
+      return `***${crypto.abbreviation}:*** ${crypto.amount}`;
+    })
+    .join('\n');
+
+  return bot.sendMessage(msg.from.id, message, config.messageOptions);
 }
